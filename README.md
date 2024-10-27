@@ -63,3 +63,29 @@ To run the script:
 
 ```bash
 python smart_fetch.py
+
+
+The script will:
+
+1. **Prompt for authentication** with Smartcar.
+2. **Retrieve vehicle information** and odometer readings.
+3. **Sync this information with Fleetio**, either updating existing vehicle entries or creating new ones.
+
+## Automating Daily Execution on macOS
+
+To keep vehicle data up-to-date, you can schedule the script to run once daily. This requires creating an additional script, `schedule_fetch.py`, and setting up a **cron job**.
+
+### Step 1: Create the `schedule_fetch.py` Script
+
+This script will run `smart_fetch.py` and log its execution time:
+
+```python
+import subprocess
+import datetime
+
+# Log the execution time
+current_time = datetime.datetime.now()
+print(f"Running smart_fetch.py at {current_time}")
+
+# Run smart_fetch.py
+subprocess.run(["python3", "smart_fetch.py"])
