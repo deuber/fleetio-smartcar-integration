@@ -5,7 +5,7 @@ This project integrates the **Smartcar API** with **Fleetio** to enable seamless
 
 > **Watch the Demo**: Check out the [YouTube demo here](https://youtu.be/mgxBdD8ttcE).
 
-> **Note**: This integration has been successfully tested with the **Toyota API** to retrieve and sync vehicle data with Fleetio.
+> **Note**: This integration has been successfully tested with my Toyota vehicles to retrieve and sync vehicle data with Fleetio.
 
 
 ## Features
