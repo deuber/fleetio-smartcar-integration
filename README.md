@@ -3,7 +3,7 @@
 This project integrates the **Smartcar API** with **Fleetio** to enable seamless vehicle data synchronization. The script connects to Smartcar to retrieve vehicle information (like odometer readings) and updates or creates corresponding entries in Fleetio.
 
 
-> **Watch the Demo**: Check out the [YouTube demo here](https://youtu.be/mgxBdD8ttcE).
+> **Watch the Demo**: Check out the [YouTube demo here](https://youtu.be/ADai9EPfKKg).
 
 > **Note**: This integration has been successfully tested with my Toyota vehicles to retrieve and sync vehicle data with Fleetio.
 
