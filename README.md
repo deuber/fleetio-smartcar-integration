@@ -226,25 +226,18 @@ Using virtual environments helps manage dependencies and avoid conflicts between
 
 \### Create a virtual environment:
 
-bash
-
-Copy code
 
 \`python3 -m venv venv\`
 
 \### Activate the virtual environment:
 
-bash
 
-Copy code
 
 \`source venv/bin/activate  # On Windows, use \`venv\\Scripts\\activate\`\`
 
 \### Install dependencies:
 
-bash
 
-Copy code
 
 \`pip install -r requirements.txt\`
 
@@ -258,9 +251,7 @@ Maintenance and Updates
 
 Regularly update your Python packages to benefit from the latest features and security patches.
 
-bash
 
-Copy code
 
 \`pip install --upgrade smartcar requests python-dotenv\`
 
