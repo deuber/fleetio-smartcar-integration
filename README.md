@@ -196,7 +196,7 @@ crontab -l
    ```
 
 
-# Security Best Practices
+## Security Best Practices
 
 
 
@@ -218,6 +218,7 @@ Virtual Environments
 
 
 Using virtual environments helps manage dependencies and avoid conflicts between different projects.
+
 ### Create a virtual environment:
 
 
@@ -225,24 +226,18 @@ Using virtual environments helps manage dependencies and avoid conflicts between
 
 ### Activate the virtual environment:
 
-
-
 `source venv/bin/activate  # On Windows, use \`venv\\Scripts\\activate\`\`
 
 ### Install dependencies:
 
-
-
 `pip install -r requirements.txt\`
 
-# Maintenance and Updates
+## Maintenance and Updates
 
 
 ### Keep Dependencies Updated:
 
 Regularly update your Python packages to benefit from the latest features and security patches.
-
-
 
 `pip install --upgrade smartcar requests python-dotenv\`
 
@@ -250,8 +245,7 @@ Regularly update your Python packages to benefit from the latest features and se
 
 Stay informed about any updates or changes to the Smartcar and Fleetio APIs to ensure continued compatibility.
 
-# Troubleshooting
-
+## Troubleshooting
 
 ### Authentication Issues:
 
@@ -267,7 +261,7 @@ Stay informed about any updates or changes to the Smartcar and Fleetio APIs to e
 
 -   Ensure that your system has a stable internet connection to communicate with the Smartcar and Fleetio APIs.
 
-# Contribution
+## Contribution
 
 Contributions are welcome! Please fork the repository and submit a pull request with your enhancements or bug fixes.
 
