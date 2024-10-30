@@ -125,6 +125,7 @@ def get_vehicle_ids(access_token):
         print("Error fetching vehicle IDs:", response.json())
         return []
 
+
 def fetch_vehicle_details(access_token, vehicle_id):
     headers = {'Authorization': f'Bearer {access_token}'}
 
@@ -136,26 +137,32 @@ def fetch_vehicle_details(access_token, vehicle_id):
     vin_url = f"https://api.smartcar.com/v1.0/vehicles/{vehicle_id}/vin"
     vin_response = requests.get(vin_url, headers=headers)
 
-    if vehicle_response.status_code == 200 and vin_response.status_code == 200:
+    # Fetch the odometer reading
+    odometer_url = f"https://api.smartcar.com/v1.0/vehicles/{vehicle_id}/odometer"
+    odometer_response = requests.get(odometer_url, headers=headers)
+
+    if vehicle_response.status_code == 200 and vin_response.status_code == 200 and odometer_response.status_code == 200:
         vehicle_data = vehicle_response.json()
         vin_data = vin_response.json()
+        odometer_data = odometer_response.json()
 
         # Combine the data
         vehicle_data['vin'] = vin_data.get('vin')
-        print("Vehicle Details:", vehicle_data)
+        vehicle_data['odometer'] = odometer_data.get('distance')
 
-        # Extract the VIN
-        vin = vehicle_data.get('vin')
-        if vin:
-            print(f"VIN for Vehicle ID {vehicle_id}: {vin}")
-        else:
-            print(f"No VIN found for Vehicle ID {vehicle_id}.")
+        # Check unit and convert if necessary
+        distance_km = vehicle_data['odometer']
+        distance_miles = distance_km / 1.60934  # Convert to miles if in kilometers
+
+        print("Vehicle Details:", vehicle_data)
+        print(f"Odometer Reading for {vehicle_data['make']} {vehicle_data['model']} ({vehicle_data['year']}): {distance_miles:.2f} miles")
 
         return {
             'make': vehicle_data.get('make', 'Unknown Make'),
             'model': vehicle_data.get('model', 'Unknown Model'),
             'year': vehicle_data.get('year', 'Unknown Year'),
-            'vin': vin  # Include VIN if available
+            'vin': vehicle_data.get('vin'),
+            'mileage': distance_miles  # Include mileage in miles
         }
     else:
         print("Error fetching vehicle details or VIN:")
@@ -163,6 +170,8 @@ def fetch_vehicle_details(access_token, vehicle_id):
             print("Vehicle Response:", vehicle_response.json())
         if vin_response.status_code != 200:
             print("VIN Response:", vin_response.json())
+        if odometer_response.status_code != 200:
+            print("Odometer Response:", odometer_response.json())
         return {}
 
 def update_vehicle_vin_in_fleetio(vehicle_id, vin):
