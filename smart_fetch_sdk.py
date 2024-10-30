@@ -40,20 +40,15 @@ def update_env_file(new_tokens):
 def get_smartcar_access():
     access_token = os.getenv("SMARTCAR_ACCESS_TOKEN_SDK")
     refresh_token = os.getenv("SMARTCAR_REFRESH_TOKEN_SDK")
-    
-    print(f"Access Token: {access_token}")  # Debugging line
-    print(f"Refresh Token: {refresh_token}")  # Debugging line
 
     if access_token:
         # Test if the access token is still valid using the SDK
         try:
             vehicles_response = smartcar.get_vehicles(access_token)
-            print("Successfully fetched vehicle data.")  # Debugging line
             return {'access_token': access_token, 'refresh_token': refresh_token}
-        except smartcar.SmartcarException as e:
-            print(f"Error validating access token: Code: {e.code}, Message: {e.message}")
+        except smartcar.AuthAuthenticationError:
+            # Token expired or invalid, refresh it using the SDK
             if refresh_token:
-                # Token expired or invalid, refresh it using the SDK
                 try:
                     new_access = client.exchange_refresh_token(refresh_token)
                     access_token = new_access.access_token
@@ -63,7 +58,7 @@ def get_smartcar_access():
                         'SMARTCAR_ACCESS_TOKEN_SDK': access_token,
                         'SMARTCAR_REFRESH_TOKEN_SDK': refresh_token
                     })
-                    print("Successfully refreshed access token.")  # Debugging line
+
                     return {'access_token': access_token, 'refresh_token': refresh_token}
                 except smartcar.SmartcarException as ex:
                     print("Failed to refresh token:")
@@ -72,10 +67,14 @@ def get_smartcar_access():
             else:
                 print("Access token expired and no refresh token available.")
                 return None
+        except smartcar.SmartcarException as e:
+            print(f"Error validating access token: Code: {e.code}, Message: {e.message}")
+            return None
 
     # If we don't have an access token, start the OAuth flow using the SDK
     auth_url = client.get_auth_url(
         scope=['read_vehicle_info', 'read_odometer', 'read_vin']
+        # Removed 'force=True' to fix the TypeError
     )
 
     print("Go to the following URL to authorize access:")
@@ -86,9 +85,10 @@ def get_smartcar_access():
     try:
         # Exchange the authorization code for an access token using the SDK
         access = client.exchange_code(authorization_code)
-        print("Type of access:", type(access))  # Debugging line
-        print("Value of access:", access)  # Debugging line
+        print("Type of access:", type(access))
+        print("Value of access:", access)
 
+        # Access the tokens directly from the Access object
         access_token = access.access_token
         refresh_token = access.refresh_token
 
@@ -104,11 +104,11 @@ def get_smartcar_access():
         return None
 
 def get_vehicle_ids(access_token):
-    print("Attempting to fetch vehicle IDs...")  # Debugging line
     try:
+        # Use the SDK to get vehicle IDs
         response = smartcar.get_vehicles(access_token)
         vehicle_ids = response.vehicles
-        print("Vehicle IDs:", vehicle_ids)  # Debugging line
+        print("Vehicle IDs:", vehicle_ids)
         return vehicle_ids
     except smartcar.SmartcarException as e:
         print("Error fetching vehicle IDs:")
@@ -116,24 +116,40 @@ def get_vehicle_ids(access_token):
         return []
 
 def fetch_vehicle_details(access_token, vehicle_id):
+    # Use the SDK's Vehicle class to interact with the vehicle
     vehicle = smartcar.Vehicle(vehicle_id, access_token)
-    try:
-        info = vehicle.attributes()
-        vin_info = vehicle.vin()
 
-        print("Vehicle Info:", info)  # Debugging line
-        print("Vehicle VIN:", vin_info)  # Debugging line
+    try:
+        # Fetch basic vehicle details using the SDK
+        info = vehicle.attributes()
+        # Fetch the VIN using the SDK
+        vin_info = vehicle.vin()
+        # Fetch the odometer/mileage using the SDK
+        odometer_info = vehicle.odometer()
+
+        print("Vehicle Info:", info)
+        print("Vehicle VIN:", vin_info)
+        print("Odometer Info:", odometer_info)  # Verify structure of odometer info
+
+        # Access the distance attribute directly and convert to miles if metric
+        distance_km = odometer_info.distance
+        distance_miles = distance_km / 1.60934  # Convert to miles
+
+        print("Odometer Reading:", distance_miles, "miles")
 
         return {
             'make': info.make or 'Unknown Make',
             'model': info.model or 'Unknown Model',
             'year': str(info.year) if info.year else 'Unknown Year',
-            'vin': vin_info.vin or 'Unknown VIN'
+            'vin': vin_info.vin or 'Unknown VIN',
+            'mileage': distance_miles  # Save mileage for later use in miles
         }
     except smartcar.SmartcarException as e:
         print("Error fetching vehicle details:")
         print(f"Code: {e.code}, Message: {e.message}")
         return {}
+
+
 
 def find_vehicle_in_fleetio(vehicle_name, vin):
     fleetio_headers = {
@@ -142,20 +158,20 @@ def find_vehicle_in_fleetio(vehicle_name, vin):
         'Content-Type': 'application/json'
     }
 
+    # Ensure VIN and vehicle_name are properly formatted
     vehicle_name = vehicle_name.strip()
     vin = vin.strip().upper() if vin else None
 
     # First, try to find the vehicle by VIN
     if vin:
-        print(f"Searching for vehicle by VIN: {vin}")  # Debugging line
+        print(f"Searching for vehicle by VIN: {vin}")
         response = requests.get(
             'https://secure.fleetio.com/api/v1/vehicles',
             headers=fleetio_headers,
             params={'q[vin_eq]': vin}
         )
-        print(f"Request URL: {response.url}")  # Debugging line
-        print(f"Response Status Code: {response.status_code}")  # Debugging line
-
+        print(f"Request URL: {response.url}")
+        print(f"Response Status Code: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
             vehicles = data.get('records', [])
@@ -163,7 +179,7 @@ def find_vehicle_in_fleetio(vehicle_name, vin):
                 fleetio_vin = vehicle.get('vin', '').strip().upper()
                 if fleetio_vin == vin:
                     vehicle_id = vehicle.get('id')
-                    print(f"Vehicle found in Fleetio by VIN with ID {vehicle_id}.")  # Debugging line
+                    print(f"Vehicle found in Fleetio by VIN with ID {vehicle_id}.")
                     return vehicle_id
             print(f"No vehicle found in Fleetio with VIN: {vin}")
         else:
@@ -171,14 +187,14 @@ def find_vehicle_in_fleetio(vehicle_name, vin):
             print(f"Error searching Fleetio by VIN: {response.status_code}, Response: {error_info}")
 
     # If not found by VIN, try to find by name
-    print(f"Searching for vehicle by name: {vehicle_name}")  # Debugging line
+    print(f"Searching for vehicle by name: {vehicle_name}")
     response = requests.get(
         'https://secure.fleetio.com/api/v1/vehicles',
         headers=fleetio_headers,
         params={'q[name_eq]': vehicle_name}
     )
-    print(f"Request URL: {response.url}")  # Debugging line
-    print(f"Response Status Code: {response.status_code}")  # Debugging line
+    print(f"Request URL: {response.url}")
+    print(f"Response Status Code: {response.status_code}")
 
     if response.status_code == 200:
         data = response.json()
@@ -187,16 +203,16 @@ def find_vehicle_in_fleetio(vehicle_name, vin):
             fleetio_name = vehicle.get('name', '').strip()
             if fleetio_name == vehicle_name:
                 vehicle_id = vehicle.get('id')
-                print(f"Vehicle found in Fleetio by name with ID {vehicle_id}.")  # Debugging line
+                print(f"Vehicle found in Fleetio by name with ID {vehicle_id}.")
                 return vehicle_id
         print(f"No vehicle found in Fleetio with name: {vehicle_name}")
     else:
         error_info = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
         print(f"Error searching Fleetio by name: {response.status_code}, Response: {error_info}")
-
     return None
 
 def create_or_update_vehicle_in_fleetio(vehicle_data):
+    # Ensure all necessary keys are present
     year = str(vehicle_data.get('year', 'Unknown Year')).strip()
     make = vehicle_data.get('make', 'Unknown Make').strip()
     model = vehicle_data.get('model', 'Unknown Model').strip()
@@ -205,6 +221,7 @@ def create_or_update_vehicle_in_fleetio(vehicle_data):
     vehicle_name = f"{year} {make} {model}".strip()
     vin = vin.strip().upper() if vin else None
 
+    # Attempt to find the vehicle in Fleetio by VIN or name
     vehicle_id = find_vehicle_in_fleetio(vehicle_name, vin)
 
     fleetio_headers = {
@@ -226,11 +243,17 @@ def create_or_update_vehicle_in_fleetio(vehicle_data):
 
     if vehicle_id:
         print(f"Vehicle '{vehicle_name}' found in Fleetio with ID {vehicle_id}. Updating vehicle.")
+        # Update the vehicle in Fleetio
         fleetio_response = requests.put(
             f'https://secure.fleetio.com/api/v1/vehicles/{vehicle_id}',
             headers=fleetio_headers,
             json=fleetio_payload
         )
+        if fleetio_response.status_code in (200, 204):
+            print(f"Vehicle '{vehicle_name}' updated successfully in Fleetio.")
+        else:
+            print(f"Error updating vehicle '{vehicle_name}' in Fleetio: {fleetio_response.status_code}, Response: {fleetio_response.json()}")
+
 
         if fleetio_response.status_code == 200:
             print(f"Vehicle '{vehicle_name}' updated successfully in Fleetio.")
@@ -242,6 +265,7 @@ def create_or_update_vehicle_in_fleetio(vehicle_data):
             print(f"Error updating vehicle '{vehicle_name}' in Fleetio: {error_info}")
     else:
         print(f"No existing vehicle found. Creating vehicle '{vehicle_name}' in Fleetio.")
+        # Create a new vehicle in Fleetio
         fleetio_response = requests.post(
             'https://secure.fleetio.com/api/v1/vehicles',
             headers=fleetio_headers,
@@ -257,6 +281,7 @@ def create_or_update_vehicle_in_fleetio(vehicle_data):
             except ValueError:
                 error_info = fleetio_response.text
             print(f"Error creating vehicle '{vehicle_name}' in Fleetio: {error_info}")
+            return  # Exit the function if vehicle creation failed
 
 def test_fleetio_authentication():
     fleetio_headers = {
